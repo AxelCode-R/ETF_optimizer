@@ -1,4 +1,4 @@
-pso_pkg_obj_func <- function(x, cov, mean_returns, prices, bm_ret, rets, betas, nav, max_assets_n, change, fund, trans_cost, return_details=FALSE){
+pso_pkg_obj_func <- function(x, cov, mean_returns, prices, bm_ret, rets, betas, return_target, nav, max_assets_n, change, fund, trans_cost, return_details=FALSE){
   wgt <- as.vector(floor(x*nav/prices)*prices/nav)
   
   
@@ -8,6 +8,8 @@ pso_pkg_obj_func <- function(x, cov, mean_returns, prices, bm_ret, rets, betas, 
   
   #fit_mean_ret <- - mean_returns %*% wgt
   fit_risk <- sqrt(t(wgt) %*% cov %*% wgt)
+  
+  fit_return_target <- abs( ((1 + mean_returns %*% wgt)^251-1) - return_target)
   
   #fit_sharp <- fit_mean_ret/fit_risk
   #if(is.na(fit_sharp)){fit_sharp <- 10}
@@ -31,13 +33,14 @@ pso_pkg_obj_func <- function(x, cov, mean_returns, prices, bm_ret, rets, betas, 
   #fit_sd <- (t(as.vector(ret_sd)) %*% wgt - ret_sd["ACWI"])^2
   
   fit_vec <- c(
-    "fit_te" = fit_te*20,
-    "fit_beta" = fit_beta*10,
+    "fit_te" = fit_te*0,
+    "fit_beta" = fit_beta*0,
     #"fit_mean_ret"=fit_mean_ret*2,
+    "fit_return_target" = fit_return_target*200,
     "fit_risk"=fit_risk,
     #"fit_sharp"=fit_sharp*0.01, 
     #"fit_sd" = fit_sd,
-    "fit_sum_wgts"=fit_sum_wgts * 10,
+    "fit_sum_wgts"=fit_sum_wgts * 20,
     "fit_max_assets_n"=fit_max_assets_n,
     "fit_change"=fit_change,
     "fit_change_cost"=fit_change_cost

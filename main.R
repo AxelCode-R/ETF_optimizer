@@ -1,4 +1,6 @@
 source("global.R")
+#markowith gutes bsp: https://www.r-bloggers.com/2012/08/genetic-algorithms-a-simple-r-example/
+# arithmretic and geometrix returns: https://www.portfolioprobe.com/2010/10/04/a-tale-of-two-returns/
 
 # ETF kennzahl RSI 
 # https://www.investors.com/etfs-and-funds/etfs/best-technical-indicators-for-etf-investors/
@@ -23,9 +25,10 @@ max_assets_n <- 30
 max_wgt <- 0.1
 change <- 0.3
 bm <- "ACWI"
+return_target <- 0.08
 
 
-opti_dates <- seq.Date(as.Date("2016-01-01"), as.Date("2022-05-01"), by="months")
+opti_dates <- seq.Date(as.Date("2013-01-01"), as.Date("2022-05-01"), by="months")
 opti_dates <- sapply(opti_dates, function(x){min(as.Date(index(all_prices))[index(all_prices)>=x])}) %>% as.Date()
 
 infos <- list()
@@ -33,7 +36,7 @@ for(i in 1:length(opti_dates)){
   date <- opti_dates[i]
   print(date)
   
-  data_dates <- seq.Date(date-months(3), date, by="days")
+  data_dates <- seq.Date(date-months(24), date, by="days")
   
   cov <- cov(all_returns[data_dates,])
   mean_returns <- sapply(all_returns[data_dates,], mean)
@@ -57,7 +60,7 @@ for(i in 1:length(opti_dates)){
   }
   par[par>max_wgt] <- max_wgt
   k <- 1
-  while( k<=5){
+  while( k<=4){
     try({
       opt <- psoptim(
         par = par,
@@ -67,6 +70,7 @@ for(i in 1:length(opti_dates)){
         prices = prices,
         bm_ret = bm_ret,
         rets = rets,
+        return_target = return_target,
         betas = betas,
         nav = nav,
         max_assets_n = max_assets_n,
@@ -77,8 +81,8 @@ for(i in 1:length(opti_dates)){
         upper = rep(max_wgt, ncol(prices)),
         control = list(
           maxit = 40+k*10, # max iterations
-          s = 100, # swarm size
-          p = 1, # percentage of information ( 1 := each particle is fully informed )
+          s = 200, # swarm size
+          p = 0.5, # percentage of information ( 1 := each particle is fully informed )
           trace=1
         )
       )
@@ -88,12 +92,13 @@ for(i in 1:length(opti_dates)){
   }
   
   fund_info <- pso_pkg_obj_func(
-    x = as.vector(floor(par*nav/prices)*prices/nav),
+    x = par,
     cov = cov,
     mean_returns = mean_returns,
     prices = prices,
     bm_ret = bm_ret,
     rets = rets,
+    return_target = return_target,
     betas = betas,
     nav = nav,
     max_assets_n = max_assets_n,
@@ -114,11 +119,13 @@ for(i in 1:length(opti_dates)){
     wgt = fund_new,
     sum_wgts = sum(fund_new),
     anzahl = floor(par*nav/prices),
+    anzahl_titel = sum(anzahl_new!=0),
     change = sum(abs(fund_new-fund))/2,
     trans_cost = sum(anzahl!=anzahl_new) * trans_cost,
     beta = sum(betas*fund_new),
     tr = sd(rets %*% fund_new - bm_ret),
-    risk = sqrt(t(fund_new) %*% cov %*% fund_new)
+    risk = sqrt(t(fund_new) %*% cov %*% fund_new),
+    mean_return_expost = ((1 + mean_returns %*% fund_new)^251-1)
   )
   nav <- nav - sum(anzahl!=anzahl_new) * trans_cost
   fund <- fund_new
@@ -131,8 +138,13 @@ for(i in 1:length(opti_dates)){
   print(paste0("sum_wgts: ", round(infos[[as.character(date)]]$sum_wgts,5) ))
 }
 
+bt_files <- list.files("BACKTESTS/")
+if(length(bt_files)<1){
+  save.image(file="BACKTESTS/test1.rdata")
+}else{
+  save.image(file=paste0("BACKTESTS/test",as.numeric(gsub(".rdata","",gsub("test","",bt_files))) + 1,".rdata"))
+}
 
-save.image(file="test9.rdata")
 
 
 
